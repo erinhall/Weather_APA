@@ -1,0 +1,102 @@
+﻿@model Weather.Models.WeatherModel
+
+@{
+    ViewBag.Title = "Home Page";
+}
+@section Scripts{
+    @Scripts.Render("~/bundles/jqueryval")
+    <script type="text/javascript" src="http://maps.googleapis.com/maps/api/js?key=AIzaSyAUuMcq7DrfhQoOcucBWh7KLpX5t5acQIE&sensor=false&libraries=places"></script>
+    <script type="text/javascript">
+
+        //using google maps api to autocomplete city 
+        google.maps.event.addDomListener(window, 'load', function () {
+            var options = {
+                types: ['(cities)'],
+            };
+
+            var input = document.getElementById('City');
+            var places = new google.maps.places.Autocomplete(input, options);
+
+        });
+    </script>
+
+}
+<h1>Weather Forecast</h1>
+
+<div class="form-group">
+    @Html.LabelFor(m => m.City)
+    @Html.TextBoxFor(model => model.City, new { @class = "form-control", @id = "City", @autocomplete = "off", @name = "City" })
+    @Html.ValidationMessageFor(model => model.City)
+</div>
+    <div class="form-group">
+        <button type="button" class="btn-primary submit">Submit</button>
+    </div>
+
+    <div id="results" style="display:none">
+        @*first table has current weather info*@
+        <h2>Current Weather</h2>
+        <div class="table-responsive">
+            <table class="table">
+                <thead id="NowHead">
+                    <tr>
+                        <th>Temperature</th>
+                        <th>Conditions</th>
+                        <th>Humidity</th>
+                        <th>Wind Speed</th>
+                    </tr>
+                </thead>
+                <tbody id="NowBody">
+                </tbody>
+            </table>
+        </div>
+
+        @*second table has upcoming weather info*@
+        <h2>Upcoming Weather</h2>
+        <div class="table-responsive">
+            <table class="table">
+                <thead id="UCHead">
+                    <tr>
+                        <th>Date</th>
+                        <th>Time</th>
+                        <th>Temperature</th>
+                        <th>Conditions</th>
+                        <th>Humidity</th>
+                    </tr>
+                </thead>
+                <tbody id="UCBody">
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+<script type="text/javascript">
+        $(document).ready(function () {
+            $("button").click(function () {
+                //pass city to getweather action in home controller, call fillData to create and fill tables with weather data
+                $.ajax({
+                    url: '@Url.RouteUrl(new{ action="GetWeather", controller="Home"})',
+                    data: JSON.stringify({ City: $('#City').val() }),
+								type: 'POST',
+								dataType: 'json',
+								contentType: "application/json; charset=utf-8",
+                    success: function (response) {
+                        fillData(response);
+                    }
+                });
+            });
+        });
+ //setting info in first table with the most timley data, which is the first set of data in the list array. The rows are built dynamically withing the tbody section of the tables.  Current weather has more details but omits time and date
+    function fillData(response) {
+        var x = document.getElementById("results");
+        x.style.display = "block";
+        $('#NowBody:last').children('tr').remove();
+        $('#NowBody:last').append("<tr><td>" + response.list[0].main.temp + " °C" + "</td><td>" + response.list[0].weather[0].main + "</td><td>" + response.list[0].main.humidity + " % </td><td>" + response.list[0].wind.speed + " MPH </td></tr>");
+        $('#UCBody:last').children('tr').remove();
+        //iterates through entire list arrray to create a new row for each entry
+            for (var i = 0; i < 10; i++) {
+                var time = new Date();
+                time.setTime(Date.parse(response.list[i].dt_txt));
+                $('#UCBody:last').append("<tr><td>" + time.toDateString() + "</td><td>" + time.toLocaleTimeString() + "</td><td>" + response.list[i].main.temp + " °F" + "</td><td>" + response.list[i].weather[0].main + "</td><td>" + response.list[i].main.humidity +" % </td></tr>");
+            }
+        }
+</script>
